@@ -8,9 +8,7 @@
  */
 #include "main.h"
 
-
 uint8_t motorSpeed;		// variable for setting duty cycle
-
 char buf[16];
 
 
@@ -19,26 +17,27 @@ char buf[16];
 //			Consider taking 3-5 measurements and skipping 1-2 extreme different
 
 int main(void) {
-	sei();
 	LCD_Initalize();
 	distanceInit();
-	uint32_t resultA = 0;
-	uint32_t resultB = 0;
-//TODO: get rid of collision between distance measure and PWM for motor speed control
-//	motorInit();
+	delayInit();
+	motorInit();
+
+	sei();
+	distance_s dist;
 	while (1) {
-		if (intFlag == 0) {
-			resultA = distanceA();
-			resultB = distanceB();
-			sprintf(buf, "%ld", resultA);
+		if(mainDelay > 1) {							// TODO: this condition is enabled only during debugging
+			distance(&dist);
+			mainDelay = 0;
+			sprintf(buf, "L: %d", dist.sensINT0);
 			LCD_Clear();
-			LCD_WriteText(buf);		// send counter value to display
-			sprintf(buf, "%ld", resultB);
+			LCD_WriteText(buf);
+			sprintf(buf, "R: %d", dist.sensINT1);
 			LCD_GoTo(0, 1);
-			LCD_WriteText(buf);		// send counter value to display
+			LCD_WriteText(buf);
+
+			motorGo(dist.sensINT0);
 		}
-		//motorGo(100);
 	}
 }
-
-//TODO: if motor.c included in this file is working properly, then replace other version in other folders(double timer (motor and time) with current one
+//TODO: if motor.c included in this file is working properly, then replace other
+//version in other folders(double timer (motor and time) with current one

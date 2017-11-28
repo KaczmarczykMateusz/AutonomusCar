@@ -4,10 +4,85 @@
  Author      : Mateusz Kaczmarczyk
  Version     : Ultra sonic sensor hc-sr04
 	       Microcontroller : Atmel AVR Atmega8
- Description : CPU 8MHz
+ Description : CPU 8MHz, use of timer0, timer2, and both interrupt PINs
  ============================================================================
  */
 #include "ultraSonic.h"
+#include "lcd.h"
+
+/*************************************************************************
+Function: Timer2 comparison interrupt()
+Purpose:  Called every 10 clock cycles in order to count time from
+			sending sound till detecting it as echo
+**************************************************************************/
+ISR(TIMER2_COMP_vect) {
+	currentCount++;
+
+	if(currentCount > 2320)	{			//If 23200us (400cm) means it's more than maximum sensor range
+		TIMER2_OC_INTERRUPT_DISABLE;
+		TIMER2_DISABLE;
+		DISABLE_INT0;
+		currentCount = 0;				//Clear counter in order to present error
+	}
+}
+
+/*************************************************************************
+Function: PIN INT0 interrupt service routine()
+Purpose:  Called when sensor at INT0 detected it's echo
+**************************************************************************/
+ISR(INT0_vect) {
+	if (intFlag == 0) {
+		TIMER2_ENABLE;
+
+		DISABLE_INT0;
+		intFlag = 1;
+
+		MCUCR |= (1 << ISC01);	//Change interrupt trigger at INT0 to falling edge
+		MCUCR &= ~(1 << ISC00);
+
+		TIMER2_OC_INTERRUPT_ENABLE;
+		ENABLE_INT0;
+	} else {
+		TIMER2_OC_INTERRUPT_DISABLE;
+		TIMER2_DISABLE;
+		DISABLE_INT0;
+	}
+}
+
+/*************************************************************************
+Function: PIN INT1 interrupt service routine()
+Purpose:  Called when sensor at INT1 detected it's echo
+**************************************************************************/
+ISR(INT1_vect) {
+	if (intFlag == 0) {
+		TIMER2_ENABLE;
+
+		DISABLE_INT1;
+		intFlag = 1;
+
+		MCUCR |= (1 << ISC11);	//Change interrupt trigger at INT1 to falling edge
+		MCUCR &= ~(1 << ISC10);
+
+		TIMER2_OC_INTERRUPT_ENABLE;
+		ENABLE_INT1;
+	} else {
+		TIMER2_OC_INTERRUPT_DISABLE;
+		TIMER2_DISABLE;
+		DISABLE_INT1;
+	}
+}
+
+//
+/*************************************************************************
+Function: TIMER0 overflow interrupt service routine()
+Purpose:  Called whenever TCNT0 overflows, counts every 32,64ms
+**************************************************************************/
+ISR(TIMER0_OVF_vect) {
+	countDelayA++;
+	countDelayB++;
+	mainDelay++;
+}
+
 
 /*************************************************************************
 Function: distanceInit()
@@ -24,142 +99,112 @@ void distanceInit(void) {
 
 	currentCount = 0;
 	intFlag = 0;
-	measureA_B = 0;
+	measureStep = 0;
 }
 
 /*************************************************************************
-Function: distanceA()
+Function: distance()
 Purpose:  Measure distance function
+Input:	  Structure with both sensors to save value in it
+Return:	  Value changed or not
 **************************************************************************/
-uint32_t distanceA(void) {
-	measureA_B = MEASURE_A;					// Confirm to comparison interrupt which sensor to read
-	GICR |= (1 << INT0); 					// enable external interrupts at INT0
-	MCUCR |= (1 << ISC01) | (1 << ISC00);	// choose source of interrupt (INT0) rising edge
-	SET_TRIG_A_PORT;
+uint8_t distance(distance_s *tmp) {
+	if(!(IS_F_STEP_WAIT) && !(IS_NEXT_STEP_SET) && !(IS_CHECK)) {
+		TIMER2_CTC_MODE;
+		OCR2 = 10;						//Set compare match for counter2
+		TCNT2 = 0;
 
-	_delay_us(10);			// delay required by ultrasonic module to start conversion
-	CLR_TRIG_A_PORT;
-	_delay_ms(65);			//TODO: exchange this with free running mode
-	GICR &= ~(1 << INT0);	// disable external interrupts at INT0
+		F_STEP_WAIT_SET;
 
-	static uint16_t distanceSave = 0;
-	if(!intFlag) {
-//		err; // TODO: add error code
+		ENABLE_INT0;
+		INT0_RISING_EDGE;
+
+		SET_TRIG_A_PORT;
+		_delay_us(10);			//Delay required by ultrasonic module to start conversion
+		CLR_TRIG_A_PORT;
+
+		TCNT0 = 0;
+		countDelayA = 1;
+	} else if((IS_NEXT_STEP_SET)) {
+		TIMER2_CTC_MODE;
+		OCR2 = 10;						//Set compare match for counter2
+		TCNT2 = 0;
+
+		NEXT_STEP_WAIT_SET;
+
+		ENABLE_INT1;
+		INT1_RISING_EDGE;
+
+		SET_TRIG_B_PORT;
+		_delay_us(10);		//Delay required by ultrasonic module to start conversion
+		CLR_TRIG_B_PORT;
+
+		TCNT0 = 0;
+		countDelayB = 1;		//Drive delay counter back to value: 2
+
+
+	}
+	if((countDelayA <= 1) && (IS_F_STEP_WAIT)) {
+		return 0;
+	} else if(IS_F_STEP_WAIT) {
+		F_STEP_WAIT_CLR;
+		STEP_PROCESSED_SET;
+		NEXT_STEP_SET;
+	} else if((IS_NEXT_STEP_SET) && (countDelayB <= 1)) {
+
+		NEXT_STEP_CLR;
+		CHECK_SET;
+		return 0;
+	} else if((IS_CHECK) && (countDelayB > 1)) {
+		CHECK_CLR;
+		NEXT_STEP_CLR;
 	}
 
-	uint32_t distance;
-	distance = ((uint32_t)currentCount * 10) / 58;	//save counter value in distA with prescaling it dividing by 5.8
+	TIMER2_OC_INTERRUPT_DISABLE;
+	TIMER2_DISABLE;
 
-	if ((distance >= 400) ||
-			(!intFlag)	  ||
-			distance < 10) { 							// abandon if echo shows distance longer than maximum range
-		distance = distanceSave;
-	} else {
-		distanceSave = distance;
-	}
-	currentCount = 0;
-	intFlag = 0;
+	uint32_t dist = 0;
+	dist = ((uint32_t)currentCount * 10) / 58;	//Save counter value in distA with prescaling it dividing by 5.8
 
-	return distance;
-}
-
-/*************************************************************************
-Function: distanceB()
-Purpose:  Measure distance function
-**************************************************************************/
-uint32_t distanceB(void) {
-	measureA_B = MEASURE_B;					// Confirm to comparison interrupt which sensor to read
-	GICR |= (1 << INT1); 					// enable external interrupts at INT1
-	MCUCR |= (1 << ISC11) | (1 << ISC10);	// choose source of interrupt (INT1) rising edge
-	SET_TRIG_B_PORT;
-
-	_delay_us(10);				// delay required by ultrasonic module to start conversion
-	CLR_TRIG_B_PORT;
-	_delay_ms(65);
-	GICR &= ~(1 << INT1);		// disable external interrupts at INT0
-
-	static uint16_t distanceSave = 0;
-	if(!intFlag) {
-//		err; // TODO: add error code
+	if(!dist) {
+		//		err; // TODO: add error code
 	}
 
-	uint32_t distance;
-	distance = ((uint32_t)currentCount * 10) / 58;	//save counter value in distA with prescaling it dividing by 5.8
-
-	if ((distance >= 400) ||
-			(!intFlag)	  ||
-			distance < 9) { 							// abandon if echo shows distance longer than maximum range
-		distance = distanceSave;
-	} else {
-		distanceSave = distance;
-	}
-	currentCount = 0;
-	intFlag = 0;
-
-	return distance;
-}
-
-/*************************************************************************
-Function: distanceB()
-Purpose:  Timer comp a interrupt
-**************************************************************************/
-ISR(TIMER2_COMP_vect) {
-	currentCount++;
-
-	if(currentCount > 23200)	{
-		intFlag = 0;
-		if(measureA_B == MEASURE_A) {				// Check which sensor we are reading
-			MCUCR |= (1 << ISC01) | (1 << ISC00);	// choose source of interrupt (INT0) rising edge
-			GICR |= (1 << INT0);					// enable external interrupts at INT0
-		} else if(MEASURE_B){
-			MCUCR |= (1 << ISC11) | (1 << ISC10);	// choose source of interrupt (INT1) rising edge
-			GICR |= (1 << INT1);					// enable external interrupts at INT1
+	if(IS_STEP_PROCESSED) {
+		static uint16_t distanceSaveA = 0;
+		if(!dist || dist == 7) {			//XXX: Error of read often shows 7,
+			dist = (uint32_t)distanceSaveA;		// after excluding it everything works fine
+		} else {
+			distanceSaveA = (uint16_t)dist;
+			NEXT_STEP_WAIT_CLR;
 		}
+		tmp->sensINT0 = distanceSaveA;
+
+		STEP_PROCESSED_CLR;
+		currentCount = 0;
+		intFlag = 0;
+	} else {
+		static uint16_t distanceSaveB = 0;
+		if(!dist) {
+			dist = (uint32_t)distanceSaveB;
+		} else {
+			distanceSaveB = (uint16_t)dist;
+			NEXT_STEP_WAIT_CLR;
+		}
+		tmp->sensINT1 = distanceSaveB;
+		currentCount = 0;
+		intFlag = 0;
 	}
+	return 1;
 }
 
-ISR(INT0_vect) {
-	if (intFlag == 0) {
-		GICR &= ~(1 << INT0);	// disable external interrupts
-
-		intFlag = 1;
-		TCCR2 |= (1 << WGM21);
-
-		OCR2 = 10;				// set compare match for counter1
-		TCNT2 = 0;
-		TCCR2 |= (1 << CS21);	//Start timer2
-		TIMSK |= (1 << OCIE2);
-
-		MCUCR |= (1 << ISC01);	// ensuring that interrupt (INT0) falling edge
-		MCUCR &= ~(1 << ISC00);
-
-		GICR |= (1 << INT0);	// enable external interrupts
-	} else {
-		TIMSK &= ~(1<<OCIE2);
-		TCCR2 &= ~(1<<CS21);	// STOP timer
-		GICR &= ~(1<<INT0);		// disable external interrupts at INT0
-	}
-}
-
-ISR(INT1_vect) {
-	if (intFlag == 0) {
-		GICR &= ~(1 << INT1);	// disable external interrupts
-
-		intFlag = 1;
-		TCCR2 |= (1 << WGM21);
-
-		OCR2 = 10;				// set compare match for counter1
-		TCNT2 = 0;
-		TCCR2 |= (1 << CS21);	//Start timer2
-		TIMSK |= (1 << OCIE2);
-
-		MCUCR |= (1 << ISC11);	// ensuring that interrupt (INT1) falling edge
-		MCUCR &= ~(1 << ISC10);
-
-		GICR |= (1 << INT1);	// enable external interrupts
-	} else {
-		TIMSK &= ~(1<<OCIE2);
-		TCCR2 &= ~(1<<CS21);	// STOP timer
-		GICR &= ~(1 << INT1);	// disable external interrupts at INT0
-	}
+/*************************************************************************
+Function: delayInit()
+Purpose:  Initialise Clock0 to count time for marking delays
+			between triggering ultrasonic sensors
+**************************************************************************/
+void delayInit(void) {
+	TIMER0_ENABLE;
+	TIMER0_OVF_INTERRUPT_ENABLE;
+    TCNT0 = 0; 			//Initialise Timer0 counter
 }
