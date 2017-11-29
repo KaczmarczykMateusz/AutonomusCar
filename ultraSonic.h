@@ -14,8 +14,17 @@
 #include <avr/interrupt.h>
 
 typedef struct {
-	uint16_t sensINT0;
-	uint16_t sensINT1;
+	//@brief: Right sensor distMeasure from object [cm]
+	uint16_t rightSens;
+
+	//@brief: Left sensor distMeasure from object [cm]
+	uint16_t leftSens;
+
+	//@brief: Count how many times echo was not found counter capacity approximately 5000h
+	uint16_t countErr;
+
+	//@brief: Count how many times sensor respond correctly counter capacity approximately 5000h
+	uint16_t countMatch;
 } distance_s;
 
 //@brief: Count compare matches of counter2 in order to measure time between sensing pulse and receiving echo
@@ -24,11 +33,11 @@ volatile uint16_t currentCount;
 //@brief: Flag switching between phases of interrupt
 volatile uint8_t intFlag;
 
-//@brief: Increment this value during overflow of counter0 interrupt event
-volatile uint8_t countDelayA;
+//@brief: Count delay time between trigger and measurement for right sensor
+volatile uint8_t rightDelay;
 
-//@brief: Increment this value during overflow of counter0 interrupt event
-volatile uint8_t countDelayB;
+//@brief: Count delay time between trigger and measurement for left sensor
+volatile uint8_t leftDelay;
 
 //@brief: Increment this value during overflow of counter0 interrupt event
 volatile uint8_t mainDelay;
@@ -36,35 +45,28 @@ volatile uint8_t mainDelay;
 //@brief: define whether measurement triggered or operation completed
 uint8_t measureStep;
 
-//@brief: Switch between sensor connected to INT0 and INT1
-#define NEXT_STEP_CLR		measureStep &= ~(1 << 0)
-#define NEXT_STEP_SET		measureStep |= (1 << 0)
-#define IS_NEXT_STEP_SET	measureStep & (1 << 0)
 
-//@brief: Confirm whether results processed or not
-#define STEP_PROCESSED_CLR	measureStep &= ~(1 << 1)
-#define STEP_PROCESSED_SET	measureStep |= (1 << 1)
-#define IS_STEP_PROCESSED	measureStep & (1 << 1)
 
-//@brief:
-#define NEXT_STEP_WAIT_CLR	measureStep &= ~(1 << 2)
-#define NEXT_STEP_WAIT_SET	measureStep |= (1 << 2)
-#define IS_NEXT_STEP_WAIT	measureStep & (1 << 2)
+//@brief: Right sensor start measurement
+#define R_SEN_SET	measureStep |= (1 << 0)
+#define R_SEN_CLR	measureStep &= ~(1 << 0)
+#define IS_R_SEN	measureStep & (1 << 0)
 
-//@brief:
-#define F_STEP_WAIT_CLR	measureStep &= ~(1 << 3)
-#define F_STEP_WAIT_SET	measureStep |= (1 << 3)
-#define IS_F_STEP_WAIT	measureStep & (1 << 3)
+//@brief: Left sensor start measurement
+#define L_SEN_SET	measureStep |= (1 << 1)
+#define L_SEN_CLR	measureStep &= ~(1 << 1)
+#define IS_L_SEN	measureStep & (1 << 1)
 
-//@brief:
-#define CHECK_CLR	measureStep &= ~(1 << 4)
-#define CHECK_SET	measureStep |= (1 << 4)
-#define IS_CHECK	measureStep & (1 << 4)
+//@brief: Right sensor ready to read
+#define R_READY_SET	measureStep |= (1 << 2)
+#define R_READY_CLR	measureStep &= ~(1 << 2)
+#define IS_R_READY	measureStep & (1 << 2)
 
-//@brief:
-#define LOCK_CLR	measureStep &= ~(1 << 5)
-#define LOCK_SET	measureStep |= (1 << 5)
-#define LOCK_CHECK	measureStep & (1 << 5)
+//@brief: Left sensor triggered, wait with read
+#define L_WAIT_SET	measureStep |= (1 << 3)
+#define L_WAIT_CLR	measureStep &= ~(1 << 3)
+#define IS_L_WAIT	measureStep & (1 << 3)
+
 
 //@brief: PORTs definitions
 #define TRIG_A_PORT_DIR		DDRC  |=  (1 << 0)
@@ -102,11 +104,11 @@ uint8_t measureA_B;
 #define  MEASURE_B 0
 
 /**
- * @brief:	Initialise variables and registers needed for distance measurement
+ * @brief:	Initialise variables and registers needed for distMeasure measurement
  * @param:	None
  * @return:	None
  */
-void distanceInit(void);
+void distInit(void);
 
 /**
  * @brief:	Initialise Clock0 to count time for marking delays
@@ -117,11 +119,11 @@ void distanceInit(void);
 void delayInit(void);
 
 /**
- * @brief:	Measure distance using two ultrasonic sensors
+ * @brief:	Measure distMeasure using two ultrasonic sensors
  * @param:	Structure with both sensors to save value in it
  * @return:	0: Wait
  * 			1: Value save to structure
  */
-uint8_t distance(distance_s *tmp);
+uint8_t distMeasure(distance_s *tmp);
 
 #endif

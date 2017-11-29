@@ -83,7 +83,9 @@ OBJDIR = .
 SRC = $(TARGET).c \
 ultraSonic.c \
 lcd.c \
-motor.c
+motor.c \
+action.c \
+keyboard.c
 
 
 # List C++ source files here. (C dependencies are automatically generated.)
@@ -618,9 +620,3 @@ $(shell mkdir $(OBJDIR) 2>/dev/null)
 .PHONY : all begin finish end sizebefore sizeafter gccversion \
 build elf hex eep lss sym coff extcoff \
 clean clean_list program debug gdb-config
-
-
-
-
-
-

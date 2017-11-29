@@ -78,17 +78,17 @@ Function: TIMER0 overflow interrupt service routine()
 Purpose:  Called whenever TCNT0 overflows, counts every 32,64ms
 **************************************************************************/
 ISR(TIMER0_OVF_vect) {
-	countDelayA++;
-	countDelayB++;
+	rightDelay++;
+	leftDelay++;
 	mainDelay++;
 }
 
 
 /*************************************************************************
-Function: distanceInit()
-Purpose:  Initialise variables and registers needed for distance measurement
+Function: distInit()
+Purpose:  Initialise variables and registers needed for distMeasure measurement
 **************************************************************************/
-void distanceInit(void) {
+void distInit(void) {
 	//@brief: Initialise trigger PORTs directions
 	TRIG_A_PORT_DIR;
 	TRIG_B_PORT_DIR;
@@ -103,18 +103,18 @@ void distanceInit(void) {
 }
 
 /*************************************************************************
-Function: distance()
-Purpose:  Measure distance function
+Function: distMeasure()
+Purpose:  Measure distMeasure function
 Input:	  Structure with both sensors to save value in it
 Return:	  Value changed or not
 **************************************************************************/
-uint8_t distance(distance_s *tmp) {
-	if(!(IS_F_STEP_WAIT) && !(IS_NEXT_STEP_SET) && !(IS_CHECK)) {
+uint8_t distMeasure(distance_s *tmp) {
+	if((IS_R_SEN) && !(IS_L_SEN) && !(IS_L_WAIT)) {
+		R_SEN_CLR;
+
 		TIMER2_CTC_MODE;
 		OCR2 = 10;						//Set compare match for counter2
 		TCNT2 = 0;
-
-		F_STEP_WAIT_SET;
 
 		ENABLE_INT0;
 		INT0_RISING_EDGE;
@@ -124,13 +124,11 @@ uint8_t distance(distance_s *tmp) {
 		CLR_TRIG_A_PORT;
 
 		TCNT0 = 0;
-		countDelayA = 1;
-	} else if((IS_NEXT_STEP_SET)) {
+		rightDelay = 1;
+	} else if((IS_L_SEN)) {
 		TIMER2_CTC_MODE;
 		OCR2 = 10;						//Set compare match for counter2
 		TCNT2 = 0;
-
-		NEXT_STEP_WAIT_SET;
 
 		ENABLE_INT1;
 		INT1_RISING_EDGE;
@@ -140,24 +138,23 @@ uint8_t distance(distance_s *tmp) {
 		CLR_TRIG_B_PORT;
 
 		TCNT0 = 0;
-		countDelayB = 1;		//Drive delay counter back to value: 2
+		leftDelay = 1;		//Drive delay counter back to value: 2
 
 
 	}
-	if((countDelayA <= 1) && (IS_F_STEP_WAIT)) {
+	if((rightDelay <= 1) && !(IS_R_SEN)) {
 		return 0;
-	} else if(IS_F_STEP_WAIT) {
-		F_STEP_WAIT_CLR;
-		STEP_PROCESSED_SET;
-		NEXT_STEP_SET;
-	} else if((IS_NEXT_STEP_SET) && (countDelayB <= 1)) {
-
-		NEXT_STEP_CLR;
-		CHECK_SET;
+	} else if(!(IS_R_SEN)) {
+		R_SEN_SET;
+		R_READY_SET;
+		L_SEN_SET;
+	} else if((IS_L_SEN) && (leftDelay <= 1)) {
+		L_SEN_CLR;
+		L_WAIT_SET;
 		return 0;
-	} else if((IS_CHECK) && (countDelayB > 1)) {
-		CHECK_CLR;
-		NEXT_STEP_CLR;
+	} else if((IS_L_WAIT) && (leftDelay > 1)) {
+		L_SEN_CLR;
+		L_WAIT_CLR;
 	}
 
 	TIMER2_OC_INTERRUPT_DISABLE;
@@ -166,32 +163,32 @@ uint8_t distance(distance_s *tmp) {
 	uint32_t dist = 0;
 	dist = ((uint32_t)currentCount * 10) / 58;	//Save counter value in distA with prescaling it dividing by 5.8
 
+	// Count how often sensor detect's it's echo
 	if(!dist) {
-		//		err; // TODO: add error code
+		tmp->countErr++;
+	} else {
+		tmp->countMatch++;
 	}
 
-	if(IS_STEP_PROCESSED) {
-		static uint16_t distanceSaveA = 0;
-		if(!dist || dist == 7) {			//XXX: Error of read often shows 7,
-			dist = (uint32_t)distanceSaveA;		// after excluding it everything works fine
+	if(IS_R_READY) {
+		R_READY_CLR;
+		static uint16_t rightDistSave = 0;
+		if(!dist || dist == 7 || dist == 8) {			//XXX: Error of read often shows 7, //TODO: check it again
+			dist = (uint32_t)rightDistSave;		// after excluding it everything works fine
 		} else {
-			distanceSaveA = (uint16_t)dist;
-			NEXT_STEP_WAIT_CLR;
+			rightDistSave = (uint16_t)dist;
 		}
-		tmp->sensINT0 = distanceSaveA;
-
-		STEP_PROCESSED_CLR;
+		tmp->rightSens = rightDistSave;
 		currentCount = 0;
 		intFlag = 0;
 	} else {
-		static uint16_t distanceSaveB = 0;
+		static uint16_t leftDistSave = 0;
 		if(!dist) {
-			dist = (uint32_t)distanceSaveB;
+			dist = (uint32_t)leftDistSave;
 		} else {
-			distanceSaveB = (uint16_t)dist;
-			NEXT_STEP_WAIT_CLR;
+			leftDistSave = (uint16_t)dist;
 		}
-		tmp->sensINT1 = distanceSaveB;
+		tmp->leftSens = leftDistSave;
 		currentCount = 0;
 		intFlag = 0;
 	}
