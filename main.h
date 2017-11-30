@@ -15,7 +15,6 @@
 #include <util/delay.h>
 #include <avr/io.h>
 #include <util/atomic.h>
-#include <avr/eeprom.h>
 
 #include "lcd.h"
 #include "ultraSonic.h"
@@ -29,8 +28,28 @@ uint8_t lockMenu;
 #define IS_MENU		lockMenu & (1 << 3)
 #define MENU_CLEAR	lockMenu &= ~(1 << 3)
 
-uint8_t EEMEM trmTrimSpeedEEMEM = 1;		//TODO: check if and how it works
 uint8_t menuIncrStep;
+
+#if 0
+#include <avr/eeprom.h>
+
+extern const char EEMEM displaySpeedR[16];
+extern const char EEMEM displaySpeedL[];
+extern const char EEMEM setTurnSpeed[];
+extern const char EEMEM setDistTrim[] ;
+extern const char EEMEM setSpeedChange[];
+
+extern const char EEMEM dispSlowSpeed[];
+extern const char EEMEM dispMiddleSpeed[];
+extern const char EEMEM dispFastSpeed[];
+
+extern const char EEMEM dispLongDist[];
+extern const char EEMEM dispMiddleDist[];
+extern const char EEMEM dispShortDist[];
+
+extern const char EEMEM dispSlowSpeedChange[];
+extern const char EEMEM dispFastSpeedChange[];
+#endif
 
 void menuNextStep(void);
 

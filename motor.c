@@ -43,5 +43,5 @@ void leftMotorGo(uint8_t motorSpeed) {
 	uint16_t tmp = motorSpeed;
 	tmp *= 255;		//@brief: convert from percent into 8 bit value
 	tmp *= 0.01f;
-	OCR1A = tmp;	//seting duty cycle at PIN OC1A equal to variable button
+	OCR1B = tmp;	//seting duty cycle at PIN OC1A equal to variable button
 }

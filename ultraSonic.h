@@ -67,6 +67,11 @@ uint8_t measureStep;
 #define L_WAIT_CLR	measureStep &= ~(1 << 3)
 #define IS_L_WAIT	measureStep & (1 << 3)
 
+//@brief:
+#define R_WAIT_SET	measureStep |= (1 << 3)
+#define R_WAIT_CLR	measureStep &= ~(1 << 3)
+#define IS_R_WAIT	measureStep & (1 << 3)
+
 
 //@brief: PORTs definitions
 #define TRIG_A_PORT_DIR		DDRC  |=  (1 << 0)

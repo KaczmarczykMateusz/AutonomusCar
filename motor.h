@@ -23,8 +23,8 @@
 //@brief: PWM definitions
 #define TIMER1_PWM_NON_INVERTING_MODE_CH_A	TCCR1A |= (1 << COM1A1);				//Non inverting PWM at PIN OC1A
 #define TIMER1_PWM_NON_INVERTING_MODE_CH_B	TCCR1A |= (1 << COM1B1);				//Non inverting PWM at PIN OC1B
-#define TIMER1_PWM_INVERTING_MOE_CH_A		TCCR1A |= (1 << COM1A1) | (1 << COM1A0);//Inverting PWM at PIN OC1A
-#define TIMER1_PWM_INVERTING_MOE_CH_B		TCCR1A |= (1 << COM1B1) | (1 << COM1B0);//Inverting PWM at PIN OC1B
+#define TIMER1_PWM_INVERTING_MODE_CH_A		TCCR1A |= (1 << COM1A1) | (1 << COM1A0);//Inverting PWM at PIN OC1A
+#define TIMER1_PWM_INVERTING_MODE_CH_B		TCCR1A |= (1 << COM1B1) | (1 << COM1B0);//Inverting PWM at PIN OC1B
 
 #define TIMER1_FAST_PWM_8_BIT				TCCR1A |= (1 << WGM10) | (1 << WGM12)	// Choose fast PWM 8-bit
 #define TIMER1_PHASE_CORRECT_PWM_8_BIT		TCCR1A |= (1 << WGM10)  				// Choose Phase correct PWM 8-bit
