@@ -36,13 +36,13 @@ void trimUpdate(trimmer tmp) {
 
 trimmer trimInit(void) {
 	trimmer tmp;
-	tmp.trmTrimSpeed = 1;
-	tmp.trmTurnSpeed = 2;
-	tmp.trmSharpSpeed = 3;
+	tmp.trmTrimSpeed = 3;
+	tmp.trmTurnSpeed = 7;
+	tmp.trmSharpSpeed = 9;
 
-	tmp.trmTrimDist = 30;
-	tmp.trmTurnDist = 20;
-	tmp.trmSharpDist = 10;
+	tmp.trmTrimDist = 40;
+	tmp.trmTurnDist = 30;
+	tmp.trmSharpDist = 15;
 
 	tmp.trmSpeedUpSlow = 2;
 	tmp.trmSpeedUpFast = 3;
@@ -190,41 +190,51 @@ void drive(distance_s space, uint8_t *Left, uint8_t *Right) {
 	uint8_t L = 100; //@brief: Temporary variable for motor speed subtraction and add
 
 	//@brief:  Turn in order to avoid obstacle
-	if((space.rightSens < _trmSharpDist) && (space.leftSens > (space.rightSens + 5)))  //@brief: In case if very close to obstacle
+	if(space.rightSens < _trmSharpDist && (space.leftSens > _trmTurnDist))  //@brief: In case if fairly far from obstacle
+	{
+		sharpLeft(&L, &R);
+		sharpLeft(&L, &R);
+	}
+	else if(space.leftSens < _trmSharpDist  && (space.rightSens > _trmTurnDist))
+	{
+		sharpRight(&L, &R);
+		sharpRight(&L, &R);
+	}
+	else if((space.rightSens < _trmSharpDist) && (space.leftSens > (space.rightSens + 2)))  //@brief: In case if very close to obstacle
 	{
 		sharpLeft(&L, &R);
 	}
-	else if((space.leftSens < _trmSharpDist) && (space.rightSens > (space.leftSens + 5)))
+	else if((space.leftSens < _trmSharpDist) && (space.rightSens > (space.leftSens + 2)))
 	{
 		sharpRight(&L, &R);
 	}
-	else if((space.rightSens < _trmTurnDist) && (space.leftSens > (space.rightSens + 5))) //@brief: In case if fairly close to obstacle
+	else if((space.rightSens < _trmTurnDist) && (space.leftSens > (space.rightSens + 3))) //@brief: In case if fairly close to obstacle
 	{
 		turnLeft(&L, &R);
 	}
-	else if((space.leftSens < _trmTurnDist) && (space.rightSens > (space.leftSens + 5)))
+	else if((space.leftSens < _trmTurnDist) && (space.rightSens > (space.leftSens + 3)))
 	{
 		turnRight(&L, &R);
 	}
-	else if(space.rightSens < space.leftSens + _trmTrimDist)  //@brief: In case if fairly far from obstacle
+	else if((space.rightSens < space.leftSens)  && (space.leftSens > (space.rightSens + 7)))  //@brief: In case if fairly far from obstacle
 	{
 		trimLeft(&L, &R);
 	}
-	else if(space.rightSens > space.leftSens + _trmTrimDist)
+	else if((space.leftSens < space.rightSens) && (space.rightSens > (space.leftSens + 7)))
 	{
 		trimRight(&L, &R);
 	}
 	else						//@brief: Accelerate if way clear
 	{
-		speedUpEasy(&L, &R);
+		speedUpFast(&L, &R);
 	}
 
 	//@brief: prevent overflowing
 	if(R < 100) {
-		if((R + *Right) > 100) {
+		if((R + *Right) > 140) {
 			*Right = (*Right + 100) - (100 - R);
 		} else {
-			*Right = 0;
+			*Right = 40;
 		}
 	} else {
 		*Right += (R - 100);
@@ -234,10 +244,10 @@ void drive(distance_s space, uint8_t *Left, uint8_t *Right) {
 	}
 
 	if(L < 100) {
-		if((L + *Left) > 100) {
+		if((L + *Left) > 140) {
 			*Left = (*Left + 100) - (100 - L);
 		} else {
-			*Left = 0;
+			*Left = 40;
 		}
 	} else {
 		*Left += (L - 100);
@@ -248,5 +258,4 @@ void drive(distance_s space, uint8_t *Left, uint8_t *Right) {
 
 	rightMotorGo(*Right);
 	leftMotorGo(*Left);
-
 }

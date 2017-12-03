@@ -20,7 +20,7 @@ ISR(TIMER2_COMP_vect) {
 
 	if(currentCount > 2320)	{			//If 23200us (400cm) means it's more than maximum sensor range
 		TIMER2_OC_INTERRUPT_DISABLE;
-		TIMER2_DISABLE;
+		TIMER2_STOP;
 		DISABLE_INT0;
 		currentCount = 0;				//Clear counter in order to present error
 	}
@@ -32,7 +32,7 @@ Purpose:  Called when sensor at INT0 detected it's echo
 **************************************************************************/
 ISR(INT0_vect) {
 	if (intFlag == 0) {
-		TIMER2_ENABLE;
+		TIMER2_START;
 
 		DISABLE_INT0;
 		intFlag = 1;
@@ -44,7 +44,7 @@ ISR(INT0_vect) {
 		ENABLE_INT0;
 	} else {
 		TIMER2_OC_INTERRUPT_DISABLE;
-		TIMER2_DISABLE;
+		TIMER2_STOP;
 		DISABLE_INT0;
 	}
 }
@@ -55,7 +55,7 @@ Purpose:  Called when sensor at INT1 detected it's echo
 **************************************************************************/
 ISR(INT1_vect) {
 	if (intFlag == 0) {
-		TIMER2_ENABLE;
+		TIMER2_START;
 
 		DISABLE_INT1;
 		intFlag = 1;
@@ -67,7 +67,7 @@ ISR(INT1_vect) {
 		ENABLE_INT1;
 	} else {
 		TIMER2_OC_INTERRUPT_DISABLE;
-		TIMER2_DISABLE;
+		TIMER2_STOP;
 		DISABLE_INT1;
 	}
 }
@@ -158,7 +158,7 @@ uint8_t distMeasure(distance_s *tmp) {
 	}
 
 	TIMER2_OC_INTERRUPT_DISABLE;
-	TIMER2_DISABLE;
+	TIMER2_STOP;
 
 	uint32_t dist = 0;
 	dist = ((uint32_t)currentCount * 10) / 58;	//Save counter value in distA with prescaling it dividing by 5.8

@@ -95,8 +95,8 @@ uint8_t measureStep;
 #define DISABLE_INT1		GICR &= ~(1 << INT1)					// disable external interrupts at INT1
 #define INT1_RISING_EDGE	MCUCR |= (1 << ISC11) | (1 << ISC10)	// choose source of interrupt (INT1) rising edge
 
-#define TIMER2_ENABLE					TCCR2 |= (1 << CS21)		//Start Timer2 with CLK/8 prescaler
-#define TIMER2_DISABLE					TCCR2 &= ~(1<<CS21)			//STOP Timer2 with CLK/8 prescaler
+#define TIMER2_START					TCCR2 |= (1 << CS21)		//Start Timer2 with CLK/8 prescaler
+#define TIMER2_STOP						TCCR2 &= ~(1<<CS21)			//STOP Timer2 with CLK/8 prescaler
 #define TIMER2_OC_INTERRUPT_ENABLE		TIMSK |= (1 << OCIE2)		//Enable Output Compare Match (with OCR2) interrupt for timer2
 #define TIMER2_OC_INTERRUPT_DISABLE		TIMSK &= ~(1 << OCIE2)		//Disable Output Compare Match (with OCR2) interrupt for timer2
 #define TIMER2_CTC_MODE					TCCR2 |= (1 << WGM21)		//Choose Clear Timer on Compare (CTC) mode

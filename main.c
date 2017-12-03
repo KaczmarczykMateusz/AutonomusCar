@@ -44,7 +44,7 @@ int main(void) {
 	key upKey = keyInit(&DDRC, &PORTC, &PINC, UP_BTN_MASK);
 	key dwnKey = keyInit(&DDRC, &PORTC, &PINC, DOWN_BTN_MASK);
 #endif
-
+	_delay_ms(1000);
 	lockMenu = 0;
 	menuIncrStep = 0;
 	char LCD_buff[16]; // TODO: check if we shouldn't exceed size to 17
@@ -69,14 +69,14 @@ int main(void) {
 		if((mainDelay > 0)) {
 			distMeasure(&dist);
 			mainDelay = 0;
-#if DEBUGGING
+//#if DEBUGGING
 			sprintf(LCD_buff, "R: %d speed: %d", dist.rightSens, rightSpeed);
 			LCD_Clear();
 			LCD_WriteText(LCD_buff);
 			sprintf(LCD_buff, "L: %d speed: %d", dist.leftSens, leftSpeed);
 			LCD_GoTo(0, 1);
 			LCD_WriteText(LCD_buff);
-#endif
+//#endif
 			drive(dist, &leftSpeed, &rightSpeed);
 		}
 

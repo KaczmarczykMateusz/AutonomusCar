@@ -31,7 +31,7 @@
 
 #define TIMER1_PRESCALE_8					(1 << CS11)								//clk/8 prescaler
 #define TIMER1_PRESCALE_64					(1 << CS11) | (1 << CS10)				//clk/64 prescaler
-#define TIMER1_ENABLE						TCCR1B |= TIMER1_PRESCALE_8				//Start Timer1 with prescaler clk/8
+#define TIMER1_START						TCCR1B |= TIMER1_PRESCALE_8				//Start Timer1 with prescaler clk/8
 
 
 /**

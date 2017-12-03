@@ -18,8 +18,6 @@
  **************************************************************************/
 key keyInit(volatile uint8_t * K_DDR, volatile uint8_t * K_PORT, volatile uint8_t *K_PIN, uint8_t keyMask) {
 	key upKey;
-//	upKey.K_DDR &= ~keyMask;
-//	upKey.K_PORT |= keyMask;
 	upKey.K_DDR = K_DDR;
 	upKey.K_PORT = K_PORT;
 	upKey.K_PIN = K_PIN;
